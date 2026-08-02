@@ -1,0 +1,46 @@
+# =============================================================================
+# ZKM .gitignore
+# =============================================================================
+
+# Dependencies
+node_modules/
+.pnp.*
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Environment / secrets — NEVER commit
+.env
+.env.local
+.env.*.local
+
+# Prisma
+prisma/migrations/**/migration_lock.toml
+
+# Database
+*.db
+*.sqlite
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Docker
+docker-compose.override.yml
+
+# Debug
+*.log
+npm-debug.log*

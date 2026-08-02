@@ -1,0 +1,135 @@
+// Prisma schema — mirrors migrations/SQL/001_init.sql
+// Run: prisma migrate dev --name init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid()) @db.Uuid @map("user_id")
+  email         String   @unique @db.VarChar(255)
+
+  saltEnc       Bytes    @map("salt_enc")
+  saltAuth      Bytes    @map("salt_auth")
+
+  // WARNING: auth_verifier is a password-equivalent for the auth path.
+  // MUST NOT be logged, serialized to JSON, or returned in any API response.
+  authVerifier  Bytes    @map("auth_verifier")
+
+  wrappedVk     Bytes    @map("wrapped_vk")
+  wrappedVkIv   Bytes    @map("wrapped_vk_iv")
+  wrappedVkTag  Bytes    @map("wrapped_vk_tag")
+
+  // Version of the Argon2id parameter table this account was derived with.
+  // Returned by login step 1 so the client derives with the same parameters.
+  // Bumped on password change / recovery / PUT /auth/kdf-upgrade.
+  kdfVersion    Int      @default(1) @map("kdf_version")
+
+  // Account recovery blob: vaultKey re-wrapped under SHA-256(recovery_code).
+  // The raw recovery code is NEVER transmitted to or stored by the server.
+  // The user must save it offline. The server only stores the wrapped form,
+  // which is useless without the 128-bit code.
+  // NULL for users who opted out of recovery (pure zero-knowledge path).
+  recoveryWrappedVk     Bytes?  @map("recovery_wrapped_vk")
+  recoveryWrappedVkIv   Bytes?  @map("recovery_wrapped_vk_iv")
+  recoveryWrappedVkTag  Bytes?  @map("recovery_wrapped_vk_tag")
+
+  // TOTP 2FA fields.
+  // The TOTP secret is encrypted at the application layer using envelope
+  // encryption (AES-256-GCM under TOTP_ENCRYPTION_KEY from env vars).
+  // This provides defense-in-depth: DB compromise alone does not expose secrets.
+  // NEVER logged or returned in API responses after initial setup.
+  // NULL = 2FA not set up yet.
+  totpSecretEnc  Bytes?   @map("totp_secret_enc")
+  totpSecretIv   Bytes?   @map("totp_secret_iv")
+  totpSecretTag  Bytes?   @map("totp_secret_tag")
+  totpEnabled  Boolean  @default(false) @map("totp_enabled")
+
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  vaultEntries  VaultEntry[]
+  sessions      AuthSession[]
+  auditLogs     AuditLog[]
+  backupCodes   BackupCode[]
+
+  @@map("users")
+}
+
+model VaultEntry {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  nonce       Bytes
+  ciphertext  Bytes
+  authTag     Bytes    @map("auth_tag")
+
+  entryType   String   @map("entry_type") @db.VarChar(50)
+  version     Int      @default(1)
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("vault_entries")
+}
+
+model AuthSession {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tokenHash   Bytes    @map("token_hash")
+  expiresAt   DateTime @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Device metadata captured at login for the Sessions page.
+  // Best-effort only: req.ip may be a proxy address unless trust proxy is
+  // configured, and user agents are trivially spoofable. Displayed for the
+  // user's situational awareness, NOT treated as a security boundary.
+  ipAddress   String?  @map("ip_address") @db.VarChar(45)
+  userAgent   String?  @map("user_agent")
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("auth_sessions")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String?  @map("user_id") @db.Uuid
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  eventType   String   @map("event_type") @db.VarChar(50)
+  ipAddress   String?  @map("ip_address") @db.VarChar(45)
+  userAgent   String?  @map("user_agent")
+  details     Json?
+
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([eventType])
+  @@map("audit_log")
+}
+
+model BackupCode {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  codeHash    String   @map("code_hash") @db.VarChar(64)
+  used        Boolean  @default(false) @map("used")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([codeHash])
+  @@index([userId, used])
+  @@map("backup_codes")
+}
