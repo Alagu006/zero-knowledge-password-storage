@@ -1,15 +1,6 @@
+```dockerfile
 # =============================================================================
 # Multi-stage Dockerfile for ZKM server
-#
-# Stage 1: Install dependencies + generate Prisma client
-# Stage 2: Build TypeScript + Vite client
-# Stage 3: Production image
-#
-# Build:
-#   docker build -t zkm-server .
-#
-# Run:
-#   docker run -p 3000:3000 --env-file .env zkm-server
 # =============================================================================
 
 # ── Stage 1: Dependencies ────────────────────────────────────────────────────
@@ -17,22 +8,17 @@ FROM node:22-slim AS deps
 
 WORKDIR /app
 
-# Install OpenSSL 3 so Prisma generates the correct Debian engine
 RUN apt-get update && \
     apt-get install -y --no-install-recommends openssl && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy package files first for better Docker layer caching
 COPY package.json package-lock.json* ./
-
-# Prisma schema is needed for prisma generate
 COPY prisma ./prisma/
 
-# Install dependencies
 RUN npm ci
 
-# Generate Prisma client
 RUN npx prisma generate
+
 
 # ── Stage 2: Build ───────────────────────────────────────────────────────────
 FROM node:22-slim AS build
@@ -46,15 +32,21 @@ COPY . .
 RUN npx tsc -p tsconfig.server.json
 RUN npx vite build
 
+
 # ── Stage 3: Production ─────────────────────────────────────────────────────
 FROM node:22-slim AS production
 
-# Install runtime dependencies
+# Install runtime dependencies:
+# - tini: proper signal handling
+# - openssl: Prisma runtime
+# - wget: health check
+# - postgresql-client: psql for SQL migrations
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         tini \
         openssl \
-        wget && \
+        wget \
+        postgresql-client && \
     rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
@@ -63,7 +55,7 @@ RUN groupadd --gid 1001 zkm && \
 
 WORKDIR /app
 
-# Copy application files
+# Application files
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/package.json ./
 COPY --from=build /app/dist ./dist
@@ -77,7 +69,6 @@ RUN rm -rf /app/node_modules/.cache \
         \( -name "*.md" -o -name "LICENSE*" -o -name "CHANGELOG*" \) \
         -delete 2>/dev/null || true
 
-# Give application user ownership
 RUN chown -R zkm:zkm /app
 
 USER zkm
@@ -96,6 +87,15 @@ HEALTHCHECK --interval=30s \
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 
-# Apply Prisma migrations before starting the server.
-# This creates/updates the tables in the Neon PostgreSQL database.
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server/index.js"]
+# Run the project's SQL migrations, then start the server.
+#
+# The SQL files are intentionally executed in order:
+#   001_init.sql
+#   002_password_change_recovery.sql
+#   003_2fa.sql
+#   004_kdf_version.sql
+#   005_sessions.sql
+#
+# ON_ERROR_STOP=1 makes PostgreSQL stop immediately if a migration fails.
+CMD ["sh", "-c", "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f migrations/SQL/001_init.sql && psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f migrations/SQL/002_password_change_recovery.sql && psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f migrations/SQL/003_2fa.sql && psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f migrations/SQL/004_kdf_version.sql && psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f migrations/SQL/005_sessions.sql && node dist/server/index.js"]
+```
