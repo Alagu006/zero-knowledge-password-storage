@@ -1,4 +1,3 @@
-```dockerfile
 # =============================================================================
 # Multi-stage Dockerfile for ZKM server
 #
@@ -100,4 +99,3 @@ ENTRYPOINT ["/usr/bin/tini", "--"]
 # Apply Prisma migrations before starting the server.
 # This creates/updates the tables in the Neon PostgreSQL database.
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server/index.js"]
-```
