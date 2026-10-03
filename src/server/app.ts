@@ -1,20 +1,16 @@
-```ts
 /**
  * Express application setup.
  *
- * SECURITY LAYER ORDER (matters):
- *   1. Helmet — sets security headers (HSTS, CSP, X-Frame-Options, etc.)
- *   2. CORS — restricts origin
- *   3. Body parsing — with size limit to prevent memory exhaustion
+ * SECURITY LAYER ORDER:
+ *   1. Helmet — security headers
+ *   2. CORS — restricts origins
+ *   3. Body parsing — request size limit
  *   4. TLS enforcement
  *   5. Health check
  *   6. API routes
  *   7. Frontend static files
- *   8. Error handler
- *
- * TLS enforcement:
- *   In production (NODE_ENV=production), the server expects to run behind
- *   Render's TLS-terminating reverse proxy, which sets X-Forwarded-Proto.
+ *   8. 404 handler
+ *   9. Global error handler
  */
 
 import "express-async-errors";
@@ -32,6 +28,7 @@ export function createApp() {
   const app = express();
 
   // ── 1. Security headers ──────────────────────────────────────────────
+
   const baseDirectives = {
     defaultSrc: ["'self'"],
     scriptSrc: ["'self'"],
@@ -70,6 +67,7 @@ export function createApp() {
   );
 
   // ── 1b. Additional security headers ─────────────────────────────────
+
   app.use((_req, res, next) => {
     res.setHeader(
       "Permissions-Policy",
@@ -79,6 +77,7 @@ export function createApp() {
   });
 
   // ── 2. CORS ──────────────────────────────────────────────────────────
+
   app.use(
     cors({
       origin: config.corsOrigins,
@@ -90,9 +89,11 @@ export function createApp() {
   );
 
   // ── 3. Body parsing ─────────────────────────────────────────────────
+
   app.use(express.json({ limit: "100kb" }));
 
   // ── 4. TLS enforcement ───────────────────────────────────────────────
+
   if (config.nodeEnv === "production") {
     app.use((req, res, next) => {
       const proto = req.headers["x-forwarded-proto"];
@@ -124,52 +125,48 @@ export function createApp() {
   }
 
   // ── 5. Health check ──────────────────────────────────────────────────
+
   app.get("/health", (_req, res) => {
     res.json({ status: "ok" });
   });
 
   // ── 6. API routes ────────────────────────────────────────────────────
+
   app.use("/auth", authRoutes);
   app.use("/vault", vaultRoutes);
 
   // ── 7. Frontend ──────────────────────────────────────────────────────
   //
-  // The Vite build produces:
+  // Vite outputs the frontend to:
   //
   //   dist/ui/index.html
-  //   dist/ui/assets/...
   //
-  // After TypeScript compilation, this file is located at:
+  // After TypeScript compilation this file is:
   //
   //   dist/server/app.js
   //
   // Therefore "../ui" resolves to:
   //
   //   dist/ui
-  //
+
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
   const frontendPath = path.resolve(__dirname, "../ui");
 
-  // Serve Vite-generated static files.
+  // Serve static frontend files.
   app.use(express.static(frontendPath));
 
   // SPA fallback.
   //
-  // Using a middleware instead of app.get("*") avoids wildcard-route
-  // compatibility issues between Express versions.
+  // This allows frontend routes such as /login, /register, etc.
+  // to load index.html instead of returning a server 404.
   app.use((req, res, next) => {
-    // Only handle GET requests that weren't handled by:
-    // - /health
-    // - /auth/*
-    // - /vault/*
-    // - static frontend files
     if (req.method !== "GET") {
       next();
       return;
     }
 
-    // API routes should remain JSON 404s.
+    // Don't turn unknown API routes into frontend pages.
     if (
       req.path === "/health" ||
       req.path.startsWith("/auth/") ||
@@ -187,37 +184,14 @@ export function createApp() {
   });
 
   // ── 8. 404 for unknown routes ────────────────────────────────────────
+
   app.use((_req, res) => {
     res.status(404).json({ error: "Not found" });
   });
 
   // ── 9. Global error handler ─────────────────────────────────────────
+
   app.use(errorHandler);
 
   return app;
 }
-```
-
-Then run:
-
-```bash
-git add src/server/app.ts
-git commit -m "serve frontend from Express"
-git push
-```
-
-Render should automatically deploy the new commit.
-
-After it finishes, open:
-
-**https://zero-knowledge-password-storage.onrender.com**
-
-You should now get the **ZKM frontend instead of `{"error":"Not found"}`**.
-
-Also, your `/health` endpoint should continue returning:
-
-```json
-{"status":"ok"}
-```
-
-The important part is that this version serves the existing `dist/ui` output from your Vite build; it does **not** require changing your Dockerfile again.
