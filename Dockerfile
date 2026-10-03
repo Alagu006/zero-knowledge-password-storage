@@ -13,7 +13,7 @@
 # =============================================================================
 
 # ── Stage 1: Dependencies ────────────────────────────────────────────────────
-FROM node:22-alpine AS deps
+FROM node:22-slim AS deps
 
 WORKDIR /app
 
@@ -28,7 +28,7 @@ RUN npm ci
 RUN npx prisma generate
 
 # ── Stage 2: Build ──────────────────────────────────────────────────────────
-FROM node:22-alpine AS build
+FROM node:22-slim AS build
 
 WORKDIR /app
 
@@ -43,7 +43,7 @@ RUN npx tsc -p tsconfig.server.json
 RUN npx vite build
 
 # ── Stage 3: Production ─────────────────────────────────────────────────────
-FROM node:22-alpine AS production
+FROM node:22-slim AS production
 
 # Security: add tini for proper PID 1 signal handling
 RUN apk add --no-cache tini
