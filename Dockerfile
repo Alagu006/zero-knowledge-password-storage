@@ -1,3 +1,4 @@
+```dockerfile
 # =============================================================================
 # Multi-stage Dockerfile for ZKM server
 #
@@ -11,7 +12,6 @@
 # Run:
 #   docker run -p 3000:3000 --env-file .env zkm-server
 # =============================================================================
-
 
 # ── Stage 1: Dependencies ────────────────────────────────────────────────────
 FROM node:22-slim AS deps
@@ -35,33 +35,22 @@ RUN npm ci
 # Generate Prisma client
 RUN npx prisma generate
 
-
 # ── Stage 2: Build ───────────────────────────────────────────────────────────
 FROM node:22-slim AS build
 
 WORKDIR /app
 
-# Reuse installed dependencies and generated Prisma client
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/package.json ./
-
-# Copy application source
 COPY . .
 
-# Build TypeScript server
 RUN npx tsc -p tsconfig.server.json
-
-# Build Vite client
 RUN npx vite build
-
 
 # ── Stage 3: Production ─────────────────────────────────────────────────────
 FROM node:22-slim AS production
 
-# Install:
-# - tini: proper PID 1 / signal handling
-# - openssl: required by Prisma at runtime
-# - wget: required by Docker health check
+# Install runtime dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         tini \
@@ -75,18 +64,14 @@ RUN groupadd --gid 1001 zkm && \
 
 WORKDIR /app
 
-# Copy production dependencies
+# Copy application files
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/package.json ./
-
-# Copy compiled application
 COPY --from=build /app/dist ./dist
-
-# Copy Prisma schema and migrations
 COPY prisma ./prisma/
 COPY migrations ./migrations/
 
-# Remove unnecessary cache/documentation files
+# Remove unnecessary files
 RUN rm -rf /app/node_modules/.cache \
            /app/node_modules/.package-lock.json && \
     find /app/node_modules \
@@ -96,13 +81,11 @@ RUN rm -rf /app/node_modules/.cache \
 # Give application user ownership
 RUN chown -R zkm:zkm /app
 
-# Run as non-root
 USER zkm
 
-# Application port
 EXPOSE 3000
 
-# Docker health check
+# Health check
 HEALTHCHECK --interval=30s \
             --timeout=5s \
             --start-period=10s \
@@ -112,8 +95,9 @@ HEALTHCHECK --interval=30s \
             --spider \
             http://localhost:3000/health || exit 1
 
-# Use tini as PID 1
 ENTRYPOINT ["/usr/bin/tini", "--"]
 
-# Start application
-CMD ["node", "dist/server/index.js"]
+# Apply Prisma migrations before starting the server.
+# This creates/updates the tables in the Neon PostgreSQL database.
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server/index.js"]
+```
