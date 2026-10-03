@@ -1,4 +1,3 @@
-```dockerfile
 # =============================================================================
 # Multi-stage Dockerfile for ZKM server
 # =============================================================================
@@ -98,4 +97,3 @@ ENTRYPOINT ["/usr/bin/tini", "--"]
 #
 # ON_ERROR_STOP=1 makes PostgreSQL stop immediately if a migration fails.
 CMD ["sh", "-c", "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f migrations/SQL/001_init.sql && psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f migrations/SQL/002_password_change_recovery.sql && psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f migrations/SQL/003_2fa.sql && psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f migrations/SQL/004_kdf_version.sql && psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f migrations/SQL/005_sessions.sql && node dist/server/index.js"]
-```
