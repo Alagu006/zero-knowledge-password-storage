@@ -33,7 +33,7 @@ export function createApp() {
     defaultSrc: ["'self'"],
     scriptSrc: ["'self'"],
     styleSrc: ["'self'", "'unsafe-inline'"],
-    connectSrc: ["'self'"],
+    connectSrc: ["'self'", "https://api.pwnedpasswords.com"],
     imgSrc: ["'self'", "data:"],
     fontSrc: ["'self'"],
     objectSrc: ["'none'"],
