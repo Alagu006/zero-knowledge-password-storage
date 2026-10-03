@@ -1,7 +1,7 @@
 # =============================================================================
 # Multi-stage Dockerfile for ZKM server
 #
-# Stage 1: Install dependencies
+# Stage 1: Install dependencies + generate Prisma client
 # Stage 2: Build TypeScript + Vite client
 # Stage 3: Production image
 #
@@ -17,6 +17,11 @@
 FROM node:22-slim AS deps
 
 WORKDIR /app
+
+# Install OpenSSL 3 so Prisma generates the correct Debian engine
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends openssl && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy package files first for better Docker layer caching
 COPY package.json package-lock.json* ./
@@ -55,8 +60,8 @@ FROM node:22-slim AS production
 
 # Install:
 # - tini: proper PID 1 / signal handling
-# - openssl: required by Prisma
-# - wget: required by the Docker health check
+# - openssl: required by Prisma at runtime
+# - wget: required by Docker health check
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         tini \
