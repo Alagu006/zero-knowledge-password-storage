@@ -18,6 +18,7 @@ export function TwoFactorSetupPage() {
   const [totpEnabled, setTotpEnabled] = useState(false);
   const [backupCodesRemaining, setBackupCodesRemaining] = useState(0);
   const [codesSaved, setCodesSaved] = useState(false);
+  const [copiedSecret, setCopiedSecret] = useState(false);
 
   // Backup-code regeneration state.
   const [regenerateMode, setRegenerateMode] = useState(false);
@@ -277,14 +278,50 @@ export function TwoFactorSetupPage() {
 
   // ── Phase: Verifying TOTP code ──────────────────────────────────────
   if (phase === "verifying") {
+    const secretMatch = totpUri.match(/secret=([A-Z2-7]+)/i);
+    const rawSecret = secretMatch ? secretMatch[1] : "";
+    const formattedSecret = rawSecret.match(/.{1,4}/g)?.join(" ") ?? rawSecret;
+
+    const handleCopySecret = async () => {
+      if (!rawSecret) return;
+      try {
+        await navigator.clipboard.writeText(rawSecret);
+        setCopiedSecret(true);
+        setTimeout(() => setCopiedSecret(false), 2000);
+      } catch {
+        // Fallback or ignore clipboard permission error
+      }
+    };
+
     return (
       <div style={styles.page}>
         <div style={styles.card}>
-          <h1 style={styles.title}>Verify Your Authenticator</h1>
+          <h1 style={styles.title}>Add to Authenticator</h1>
           <p style={styles.subtitle}>
-            Scan the QR code in your authenticator app, then enter the
-            6-digit code below to activate two-factor authentication.
+            Enter this secret key in your authenticator app (Google Authenticator, Authy, 1Password, etc.) or open directly:
           </p>
+
+          {rawSecret && (
+            <div style={styles.secretBox}>
+              <div style={styles.secretLabel}>Manual Setup Key:</div>
+              <div style={styles.secretValue}>{formattedSecret}</div>
+              <div style={{ display: "flex", gap: "8px", marginTop: "10px", flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={handleCopySecret}
+                  style={styles.copyBtn}
+                >
+                  {copiedSecret ? "Copied!" : "Copy Setup Key"}
+                </button>
+                <a
+                  href={totpUri}
+                  style={styles.openAppBtn}
+                >
+                  Open in Authenticator
+                </a>
+              </div>
+            </div>
+          )}
 
           {error && (
             <div style={styles.error} role="alert">
@@ -294,7 +331,7 @@ export function TwoFactorSetupPage() {
 
           <form onSubmit={handleVerify} style={styles.form}>
             <label style={styles.label}>
-              Authenticator Code
+              Enter 6-Digit Authenticator Code
               <input
                 type="text"
                 value={verifyCode}
@@ -551,5 +588,49 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
     fontSize: 13,
     padding: 0,
+  },
+  secretBox: {
+    padding: "14px",
+    backgroundColor: "#12141c",
+    borderRadius: 8,
+    border: "1px solid #282c3c",
+    marginBottom: 20,
+    textAlign: "left",
+  },
+  secretLabel: {
+    fontSize: 12,
+    color: "#9aa0b4",
+    marginBottom: 6,
+    fontWeight: 500,
+  },
+  secretValue: {
+    fontFamily: "monospace",
+    fontSize: 15,
+    letterSpacing: 2,
+    color: "#99a5ff",
+    wordBreak: "break-all",
+    fontWeight: 600,
+    userSelect: "all",
+  },
+  copyBtn: {
+    padding: "7px 14px",
+    fontSize: 12,
+    fontWeight: 600,
+    border: "1px solid #363b4f",
+    borderRadius: 6,
+    backgroundColor: "#1e2233",
+    color: "#e0e0e0",
+    cursor: "pointer",
+  },
+  openAppBtn: {
+    padding: "7px 14px",
+    fontSize: 12,
+    fontWeight: 600,
+    border: "1px solid #363b4f",
+    borderRadius: 6,
+    backgroundColor: "#1e2233",
+    color: "#7c8aff",
+    textDecoration: "none",
+    display: "inline-block",
   },
 };

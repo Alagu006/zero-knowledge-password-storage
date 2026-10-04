@@ -80,6 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const tempTokenRef = useRef<string | null>(null);
   const wrappedVKRef = useRef<EncryptedVaultKey | null>(null);
   const masterKeyRef = useRef<Uint8Array | null>(null);
+  const pendingEmailRef = useRef<string | null>(null);
 
   const vaultKeyRef = useRef<Uint8Array | null>(null);
 
@@ -123,6 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setToken(loginResult.token);
           setVaultKey(loginResult.vaultKey);
           setEmail(emailInput);
+          pendingEmailRef.current = null;
           return true;
         }
 
@@ -132,6 +134,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           tempTokenRef.current = mfResult.tempToken;
           wrappedVKRef.current = mfResult.wrappedVK;
           masterKeyRef.current = mfResult.masterKey;
+          pendingEmailRef.current = emailInput;
           setTwoFactorPending(true);
           setLoading(false);
           return false; // Not logged in yet — waiting for 2FA
@@ -154,6 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const tempToken = tempTokenRef.current;
       const wrappedVK = wrappedVKRef.current;
       const masterKey = masterKeyRef.current;
+      const userEmail = pendingEmailRef.current ?? email;
 
       if (!tempToken || !wrappedVK || !masterKey) {
         setError("Two-factor session expired — please log in again");
@@ -168,11 +172,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (result.ok) {
           setToken(result.token);
           setVaultKey(result.vaultKey);
-          setEmail(email); // email was set during step 1
+          setEmail(userEmail);
           setTwoFactorPending(false);
           tempTokenRef.current = null;
           wrappedVKRef.current = null;
           masterKeyRef.current = null;
+          pendingEmailRef.current = null;
           return true;
         }
         setError(result.message);
@@ -192,6 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const tempToken = tempTokenRef.current;
       const wrappedVK = wrappedVKRef.current;
       const masterKey = masterKeyRef.current;
+      const userEmail = pendingEmailRef.current ?? email;
 
       if (!tempToken || !wrappedVK || !masterKey) {
         setError("Two-factor session expired — please log in again");
@@ -206,11 +212,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (result.ok) {
           setToken(result.token);
           setVaultKey(result.vaultKey);
-          setEmail(email);
+          setEmail(userEmail);
           setTwoFactorPending(false);
           tempTokenRef.current = null;
           wrappedVKRef.current = null;
           masterKeyRef.current = null;
+          pendingEmailRef.current = null;
           return true;
         }
         setError(result.message);
@@ -233,6 +240,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     tempTokenRef.current = null;
     wrappedVKRef.current = null;
+    pendingEmailRef.current = null;
     setTwoFactorPending(false);
     setError(null);
   }, []);
