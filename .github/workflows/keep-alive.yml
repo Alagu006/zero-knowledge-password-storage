@@ -1,0 +1,55 @@
+name: Keep Render Alive (Prevent Cold Starts)
+
+# -----------------------------------------------------------------------------
+# Render Free Tier spins down after 15 minutes of inactivity.
+# This workflow runs every 14 minutes to ping the service (/health and /),
+# ensuring the server stays warm and eliminate the 30-50s cold start delay.
+# -----------------------------------------------------------------------------
+
+on:
+  schedule:
+    # Runs at minute 0, 14, 28, 42, 56 (every 14 minutes max)
+    - cron: '*/14 * * * *'
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'URL to ping (defaults to live Render app)'
+        required: false
+        default: 'https://zero-knowledge-password-storage.onrender.com'
+
+jobs:
+  ping:
+    name: Ping Service
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Ping Render App
+        env:
+          DEFAULT_URL: 'https://zero-knowledge-password-storage.onrender.com'
+          INPUT_URL: ${{ github.event.inputs.target_url }}
+        run: |
+          BASE_URL="${INPUT_URL:-$DEFAULT_URL}"
+          # Remove trailing slash if provided
+          BASE_URL="${BASE_URL%/}"
+          
+          echo "=========================================="
+          echo "Keeping Render app warm: $BASE_URL"
+          echo "Timestamp (UTC): $(date -u)"
+          echo "=========================================="
+          
+          # 1. Ping the unauthenticated /health endpoint
+          echo "1. Checking backend /health endpoint..."
+          HEALTH_STATUS=$(curl -s -S --max-time 90 --retry 2 -o /dev/null -w "%{http_code}" "$BASE_URL/health")
+          echo "   -> /health returned HTTP $HEALTH_STATUS"
+          
+          # 2. Ping frontend home page
+          echo "2. Checking frontend root URL..."
+          ROOT_STATUS=$(curl -s -S --max-time 90 --retry 2 -o /dev/null -w "%{http_code}" "$BASE_URL/")
+          echo "   -> / returned HTTP $ROOT_STATUS"
+          
+          if [ "$HEALTH_STATUS" -eq 200 ] || [ "$ROOT_STATUS" -eq 200 ]; then
+            echo "Success: Render service is warm and active."
+          else
+            echo "Warning: Received unexpected status ($HEALTH_STATUS / $ROOT_STATUS). Check Render logs."
+          fi
