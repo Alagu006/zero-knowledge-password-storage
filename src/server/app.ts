@@ -194,7 +194,9 @@ export function createApp() {
     // Don't turn unknown API routes into frontend pages.
     if (
       req.path === "/health" ||
+      req.path === "/auth" ||
       req.path.startsWith("/auth/") ||
+      req.path === "/vault" ||
       req.path.startsWith("/vault/")
     ) {
       next();

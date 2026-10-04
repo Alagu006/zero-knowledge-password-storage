@@ -10,6 +10,9 @@ import {
   TOTP_PERIOD,
   TOTP_TOLERANCE,
   TOTP_SECRET_LENGTH,
+  isTotpConsumed,
+  markTotpConsumed,
+  clearConsumedTotpCodes,
 } from "../utils/totp.js";
 
 // ---------------------------------------------------------------------------
@@ -202,5 +205,28 @@ describe("TOTP URI generation", () => {
     const uri = generateTotpUri(secret, "user@test.com", "MyApp");
     expect(uri).toContain("MyApp");
     expect(uri).toContain("issuer=MyApp");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// TOTP Replay Prevention (RFC 6238 §5.2)
+// ---------------------------------------------------------------------------
+
+describe("TOTP replay prevention", () => {
+  it("detects and blocks consumed TOTP codes", () => {
+    clearConsumedTotpCodes();
+    const userId = "test-user-uuid";
+    const code = "123456";
+
+    expect(isTotpConsumed(userId, code)).toBe(false);
+
+    markTotpConsumed(userId, code);
+    expect(isTotpConsumed(userId, code)).toBe(true);
+
+    // Another user using the same code is not blocked
+    expect(isTotpConsumed("different-user-uuid", code)).toBe(false);
+
+    // Different code for the same user is not blocked
+    expect(isTotpConsumed(userId, "654321")).toBe(false);
   });
 });

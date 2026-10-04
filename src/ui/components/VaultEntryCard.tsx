@@ -47,7 +47,7 @@ export function VaultEntryCard({ entry, onEdit, onDelete, urlMatch }: Props) {
     >
       <div style={styles.header}>
         <div style={styles.headerLeft}>
-          <div style={styles.typeBadge}>{escapeHtml(entry.entryType)}</div>
+          <div style={styles.typeBadge}>{entry.entryType}</div>
           {urlMatch && <span style={styles.matchBadge}>URL Match</span>}
         </div>
         <div style={styles.actions}>
@@ -65,7 +65,7 @@ export function VaultEntryCard({ entry, onEdit, onDelete, urlMatch }: Props) {
         {payload.label && (
           <div style={styles.field}>
             <span style={styles.fieldLabel}>Label</span>
-            <span style={styles.fieldValue}>{escapeHtml(payload.label)}</span>
+            <span style={styles.fieldValue}>{payload.label}</span>
           </div>
         )}
 
@@ -73,7 +73,7 @@ export function VaultEntryCard({ entry, onEdit, onDelete, urlMatch }: Props) {
         {payload.url && (
           <div style={styles.field}>
             <span style={styles.fieldLabel}>URL</span>
-            <span style={styles.fieldValue}>{escapeHtml(payload.url)}</span>
+            <span style={styles.fieldValue}>{payload.url}</span>
           </div>
         )}
 
@@ -81,9 +81,7 @@ export function VaultEntryCard({ entry, onEdit, onDelete, urlMatch }: Props) {
         {payload.username && (
           <div style={styles.field}>
             <span style={styles.fieldLabel}>Username</span>
-            <span style={styles.fieldValue}>
-              {escapeHtml(payload.username)}
-            </span>
+            <span style={styles.fieldValue}>{payload.username}</span>
           </div>
         )}
 
@@ -91,14 +89,12 @@ export function VaultEntryCard({ entry, onEdit, onDelete, urlMatch }: Props) {
         <div style={styles.field}>
           <span style={styles.fieldLabel}>Secret</span>
           {isDecryptionFailed ? (
-            <span style={styles.failedText}>
-              {escapeHtml(payload.secret)}
-            </span>
+            <span style={styles.failedText}>{payload.secret}</span>
           ) : (
             <div style={styles.valueRow}>
               <code style={styles.value}>
                 {showSecret
-                  ? escapeHtml(payload.secret)
+                  ? payload.secret
                   : "\u2022".repeat(Math.min(payload.secret.length, 24))}
               </code>
               <button
@@ -123,7 +119,7 @@ export function VaultEntryCard({ entry, onEdit, onDelete, urlMatch }: Props) {
             {showAllFields && (
               <div style={styles.field}>
                 <span style={styles.fieldLabel}>Notes</span>
-                <pre style={styles.notes}>{escapeHtml(payload.notes)}</pre>
+                <pre style={styles.notes}>{payload.notes}</pre>
               </div>
             )}
           </>

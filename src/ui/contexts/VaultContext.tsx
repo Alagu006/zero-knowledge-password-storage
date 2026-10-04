@@ -206,6 +206,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
         zeroize(plainBytes);
 
         await apiUpdateEntry(token, id, {
+          entryType,
           nonce: toHex(encrypted.iv),
           ciphertext: toHex(encrypted.ciphertext),
           authTag: toHex(encrypted.authTag),

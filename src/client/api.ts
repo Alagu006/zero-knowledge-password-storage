@@ -171,7 +171,7 @@ export function apiCreateEntry(
 export function apiUpdateEntry(
   token: string,
   id: string,
-  entry: { nonce: string; ciphertext: string; authTag: string; version: number },
+  entry: { entryType?: string; nonce: string; ciphertext: string; authTag: string; version: number },
 ): Promise<VaultEntryResponse> {
   return request("PUT", `/vault/entries/${id}`, entry, token);
 }

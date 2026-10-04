@@ -26,6 +26,18 @@ async function main() {
     );
   });
 
+  // Periodically clean up expired sessions from the database (every 10 minutes)
+  const sessionCleanupTimer = setInterval(async () => {
+    try {
+      await prisma.authSession.deleteMany({
+        where: { expiresAt: { lt: new Date() } },
+      });
+    } catch (err) {
+      console.error("[zkm] Background expired session cleanup failed:", err);
+    }
+  }, 10 * 60 * 1000);
+  sessionCleanupTimer.unref();
+
   // ── Graceful shutdown ────────────────────────────────────────────────
   async function shutdown(signal: string) {
     console.log(`\n[zkm] ${signal} received — shutting down gracefully…`);

@@ -92,6 +92,11 @@ export const createEntrySchema = z
 /** PUT /vault/entries/:id — update existing entry. */
 export const updateEntrySchema = z
   .object({
+    entryType: z
+      .enum(ENTRY_TYPE_ENUM, {
+        errorMap: () => ({ message: `entryType must be one of: ${ENTRY_TYPE_ENUM.join(", ")}` }),
+      })
+      .optional(),
     nonce: z.string().regex(/^[0-9a-f]{24}$/i, "nonce must be 24 hex chars (12 bytes)"),
     ciphertext: z.string().regex(/^[0-9a-f]+$/i, "ciphertext must be hex").min(2),
     authTag: z.string().regex(/^[0-9a-f]{32}$/i, "authTag must be 32 hex chars (16 bytes)"),

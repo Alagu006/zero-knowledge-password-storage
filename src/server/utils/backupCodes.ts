@@ -160,6 +160,8 @@ export function verifyBackupCode(
   const submittedHash = hashBackupCode(normalized);
   const submittedBuf = Buffer.from(submittedHash, "utf8");
 
+  let matchedIndex = -1;
+
   for (let i = 0; i < storedRecords.length; i++) {
     const record = storedRecords[i]!;
 
@@ -172,11 +174,13 @@ export function verifyBackupCode(
       submittedBuf.length === storedBuf.length &&
       timingSafeEqual(submittedBuf, storedBuf)
     ) {
-      return i;
+      if (matchedIndex === -1) {
+        matchedIndex = i;
+      }
     }
   }
 
-  return -1;
+  return matchedIndex;
 }
 
 // ---------------------------------------------------------------------------

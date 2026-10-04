@@ -74,6 +74,8 @@ import {
   generateTotpSecret,
   verifyTotp,
   generateTotpUri,
+  isTotpConsumed,
+  markTotpConsumed,
 } from "../utils/totp.js";
 import {
   generateBackupCodes,
@@ -214,7 +216,7 @@ router.post(
     res.json({
       saltEnc: randomBytes(32).toString("hex"),
       saltAuth: randomBytes(32).toString("hex"),
-      wrappedVk: randomBytes(48).toString("hex"), // slightly larger than real
+      wrappedVk: randomBytes(32).toString("hex"),
       wrappedVkIv: randomBytes(12).toString("hex"),
       wrappedVkTag: randomBytes(16).toString("hex"),
       kdfVersion: dummyKdfVersion(),
@@ -250,20 +252,15 @@ router.post(
       where: { email: parsed.email },
     });
 
-    // GENERIC error message — same whether user exists or not.
-    if (!user) {
-      recordAuthFailure(parsed.email);
-      throw new UnauthorizedError("Invalid credentials");
-    }
-
     // Constant-time comparison of auth verifier.
-    // TimingSafeEqual requires both buffers to be the same length; if
-    // they aren't, we treat it as a mismatch (never compare different
-    // lengths with timingSafeEqual — it throws).
-    const stored = user.authVerifier;
+    // If the user does not exist, compare against a dummy buffer so response
+    // time is identical to an incorrect password, preventing email enumeration.
+    const dummyVerifier = Buffer.alloc(32);
+    const stored = user ? user.authVerifier : dummyVerifier;
     const submitted = Buffer.from(parsed.authKey, "hex");
 
     const isValid =
+      user !== null &&
       stored.length === submitted.length &&
       timingSafeEqual(stored, submitted);
 
@@ -271,10 +268,11 @@ router.post(
       recordAuthFailure(parsed.email);
 
       await auditLog({
-        userId: user.id,
+        ...(user ? { userId: user.id } : {}),
         eventType: "login_failure",
         ipAddress: req.ip,
         userAgent: req.get("user-agent"),
+        details: { email: parsed.email },
       });
 
       throw new UnauthorizedError("Invalid credentials");
@@ -609,7 +607,7 @@ router.post(
     // generic failure. The dummy token will fail verification in step 2.
     res.json({
       recoverySessionToken: randomBytes(32).toString("base64url"),
-      recoveryWrappedVk: randomBytes(48).toString("hex"),
+      recoveryWrappedVk: randomBytes(32).toString("hex"),
       recoveryWrappedVkIv: randomBytes(12).toString("hex"),
       recoveryWrappedVkTag: randomBytes(16).toString("hex"),
     });
@@ -882,6 +880,11 @@ router.post(
       throw new UnauthorizedError("Invalid code");
     }
 
+    // Replay attack prevention: reject codes already consumed within this window
+    if (isTotpConsumed(userId, parsed.code)) {
+      throw new UnauthorizedError("Invalid code");
+    }
+
     // Decrypt the TOTP secret from the envelope
     const totpSecret = decryptTotpSecret(
       { ciphertext: user.totpSecretEnc, iv: user.totpSecretIv, tag: user.totpSecretTag },
@@ -902,6 +905,8 @@ router.post(
 
       throw new UnauthorizedError("Invalid code");
     }
+
+    markTotpConsumed(userId, parsed.code);
 
     // Code is valid — enable 2FA.
     clearTotpFailures(userId);
@@ -953,6 +958,11 @@ router.post(
       throw new UnauthorizedError("Invalid code");
     }
 
+    // Replay attack prevention: reject codes already consumed within this window
+    if (isTotpConsumed(userId, parsed.code)) {
+      throw new UnauthorizedError("Invalid code");
+    }
+
     // Decrypt the TOTP secret from the envelope
     const totpSecret = decryptTotpSecret(
       { ciphertext: user.totpSecretEnc, iv: user.totpSecretIv, tag: user.totpSecretTag },
@@ -973,6 +983,8 @@ router.post(
 
       throw new UnauthorizedError("Invalid code");
     }
+
+    markTotpConsumed(userId, parsed.code);
 
     // Valid code — disable 2FA and clear all 2FA data.
     clearTotpFailures(userId);
@@ -1037,6 +1049,11 @@ router.post(
       throw new UnauthorizedError("Invalid code");
     }
 
+    // Replay attack prevention: reject codes already consumed within this window
+    if (isTotpConsumed(userId, parsed.code)) {
+      throw new UnauthorizedError("Invalid code");
+    }
+
     // Decrypt the TOTP secret from the envelope.
     const totpSecret = decryptTotpSecret(
       { ciphertext: user.totpSecretEnc, iv: user.totpSecretIv, tag: user.totpSecretTag },
@@ -1057,6 +1074,8 @@ router.post(
 
       throw new UnauthorizedError("Invalid code");
     }
+
+    markTotpConsumed(userId, parsed.code);
 
     clearTotpFailures(userId);
 
@@ -1136,6 +1155,11 @@ router.post(
       throw new UnauthorizedError("Invalid code");
     }
 
+    // Replay attack prevention: reject codes already consumed within this window
+    if (isTotpConsumed(userId, parsed.code)) {
+      throw new UnauthorizedError("Invalid code");
+    }
+
     // Decrypt the TOTP secret from the envelope
     const totpSecret = decryptTotpSecret(
       { ciphertext: user.totpSecretEnc, iv: user.totpSecretIv, tag: user.totpSecretTag },
@@ -1156,6 +1180,8 @@ router.post(
 
       throw new UnauthorizedError("Invalid code");
     }
+
+    markTotpConsumed(userId, parsed.code);
 
     // TOTP code is valid — issue full session JWT.
     clearTotpFailures(userId);
@@ -1454,15 +1480,13 @@ router.delete(
     const { userId } = req.user;
     const { id } = uuidParamSchema.parse(req.params);
 
-    const existing = await prisma.authSession.findUnique({
-      where: { id },
-      select: { userId: true },
+    const deleted = await prisma.authSession.deleteMany({
+      where: { id, userId },
     });
-    if (!existing || existing.userId !== userId) {
+
+    if (deleted.count === 0) {
       throw new NotFoundError("Session not found");
     }
-
-    await prisma.authSession.delete({ where: { id } });
 
     await auditLog({
       userId,

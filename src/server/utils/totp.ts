@@ -237,3 +237,58 @@ export function generateQrDataUri(_uri: string): string {
   // The server returns the otpauth URI and the client renders it.
   return "";
 }
+
+// ---------------------------------------------------------------------------
+// Replay attack prevention (RFC 6238 §5.2)
+// ---------------------------------------------------------------------------
+
+interface ConsumedTotpEntry {
+  expiresAt: number;
+}
+
+const consumedCodes = new Map<string, ConsumedTotpEntry>();
+const MAX_CONSUMED_CODES = 10_000;
+
+function pruneConsumedCodes(): void {
+  const now = Date.now();
+  for (const [key, entry] of consumedCodes.entries()) {
+    if (entry.expiresAt <= now) {
+      consumedCodes.delete(key);
+    }
+  }
+}
+
+/**
+ * Check if a TOTP code has already been consumed by a user within its validity window.
+ */
+export function isTotpConsumed(userId: string, code: string): boolean {
+  pruneConsumedCodes();
+  const key = `${userId}:${code}`;
+  const entry = consumedCodes.get(key);
+  if (!entry) return false;
+  return entry.expiresAt > Date.now();
+}
+
+/**
+ * Mark a TOTP code as consumed by a user to prevent replay attacks.
+ */
+export function markTotpConsumed(
+  userId: string,
+  code: string,
+  windowSeconds = (TOTP_TOLERANCE * 2 + 1) * TOTP_PERIOD,
+): void {
+  pruneConsumedCodes();
+  if (consumedCodes.size >= MAX_CONSUMED_CODES) {
+    const oldestKey = consumedCodes.keys().next().value;
+    if (oldestKey) consumedCodes.delete(oldestKey);
+  }
+  const key = `${userId}:${code}`;
+  consumedCodes.set(key, { expiresAt: Date.now() + windowSeconds * 1000 });
+}
+
+/**
+ * Clear all consumed codes (used for testing).
+ */
+export function clearConsumedTotpCodes(): void {
+  consumedCodes.clear();
+}

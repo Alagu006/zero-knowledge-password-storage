@@ -28,7 +28,7 @@ import {
   uuidParamSchema,
 } from "../utils/validation.js";
 import { auditLog } from "../utils/audit.js";
-import { NotFoundError } from "../utils/errors.js";
+import { NotFoundError, ConflictError } from "../utils/errors.js";
 
 const router = Router();
 
@@ -134,34 +134,42 @@ router.put("/entries/:id", async (req, res) => {
   const { id } = uuidParamSchema.parse(req.params);
   const parsed = updateEntrySchema.parse(req.body);
 
-  // Fetch existing entry scoped to this user (prevents ID enumeration).
-  // Both "entry doesn't exist" and "entry belongs to another user" return 404.
-  const existing = await prisma.vaultEntry.findFirst({
-    where: { id, userId },
-  });
-
-  if (!existing) {
-    throw new NotFoundError("Entry not found");
-  }
-
-  // Optimistic concurrency: the submitted version must match the current
-  // version. This prevents lost-update races and ensures the client is
-  // working from the latest state.
-  if (parsed.version !== existing.version) {
-    throw new NotFoundError(
-      `Version mismatch: expected ${existing.version}, got ${parsed.version}`,
-    );
-  }
-
-  const updated = await prisma.vaultEntry.update({
-    where: { id },
+  // Optimistic concurrency via atomic updateMany:
+  // Both ownership (userId) and expected version must match in a single atomic DB operation.
+  const updateResult = await prisma.vaultEntry.updateMany({
+    where: { id, userId, version: parsed.version },
     data: {
+      ...(parsed.entryType && { entryType: parsed.entryType }),
       nonce: Buffer.from(parsed.nonce, "hex"),
       ciphertext: Buffer.from(parsed.ciphertext, "hex"),
       authTag: Buffer.from(parsed.authTag, "hex"),
       version: { increment: 1 },
     },
   });
+
+  if (updateResult.count === 0) {
+    // Determine whether entry is missing (404) or version mismatched (409)
+    const existing = await prisma.vaultEntry.findFirst({
+      where: { id, userId },
+      select: { version: true },
+    });
+
+    if (!existing) {
+      throw new NotFoundError("Entry not found");
+    }
+
+    throw new ConflictError(
+      `Version mismatch: expected ${existing.version}, got ${parsed.version}`,
+    );
+  }
+
+  const updated = await prisma.vaultEntry.findUnique({
+    where: { id },
+  });
+
+  if (!updated) {
+    throw new NotFoundError("Entry not found");
+  }
 
   await auditLog({
     userId,
@@ -193,23 +201,21 @@ router.delete("/entries/:id", async (req, res) => {
   const userId = req.user!.userId;
   const { id } = uuidParamSchema.parse(req.params);
 
-  // Fetch entry scoped to this user (prevents ID enumeration).
-  const existing = await prisma.vaultEntry.findFirst({
+  // Atomic scoped delete (prevents ID enumeration and TOCTOU races)
+  const deleted = await prisma.vaultEntry.deleteMany({
     where: { id, userId },
   });
 
-  if (!existing) {
+  if (deleted.count === 0) {
     throw new NotFoundError("Entry not found");
   }
-
-  await prisma.vaultEntry.delete({ where: { id } });
 
   await auditLog({
     userId,
     eventType: "entry_delete",
     ipAddress: req.ip,
     userAgent: req.get("user-agent"),
-    details: { entryId: id, entryType: existing.entryType },
+    details: { entryId: id },
   });
 
   res.status(204).end();

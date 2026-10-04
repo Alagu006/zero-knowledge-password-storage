@@ -100,8 +100,15 @@ export function lockoutRemainingSeconds(email: string): number {
   return Math.max(0, Math.ceil((record.lockedUntil - Date.now()) / 1000));
 }
 
+const MAX_LOCKOUT_ENTRIES = 10_000;
+
 /** Record a failed authentication attempt. May trigger lockout. */
 export function recordAuthFailure(email: string): void {
+  // Prevent memory exhaustion attacks: reject inserting new keys if store exceeds capacity
+  if (!lockoutStore.has(email) && lockoutStore.size >= MAX_LOCKOUT_ENTRIES) {
+    return;
+  }
+
   const existing = lockoutStore.get(email) ?? { failures: 0, lockedUntil: 0 };
   existing.failures += 1;
 
@@ -198,6 +205,10 @@ export function totpLockoutRemainingSeconds(userId: string): number {
 
 /** Record a failed TOTP attempt. May trigger lockout. */
 export function recordTotpFailure(userId: string): void {
+  if (!totpLockoutStore.has(userId) && totpLockoutStore.size >= MAX_LOCKOUT_ENTRIES) {
+    return;
+  }
+
   const existing = totpLockoutStore.get(userId) ?? { failures: 0, lockedUntil: 0 };
   existing.failures += 1;
 
