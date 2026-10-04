@@ -19,6 +19,8 @@ export function TwoFactorSetupPage() {
   const [backupCodesRemaining, setBackupCodesRemaining] = useState(0);
   const [codesSaved, setCodesSaved] = useState(false);
   const [copiedSecret, setCopiedSecret] = useState(false);
+  const [copiedCodes, setCopiedCodes] = useState(false);
+  const [copiedNewCodes, setCopiedNewCodes] = useState(false);
 
   // Backup-code regeneration state.
   const [regenerateMode, setRegenerateMode] = useState(false);
@@ -128,6 +130,23 @@ export function TwoFactorSetupPage() {
                   </div>
                 ))}
               </div>
+
+              <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(newBackupCodes.join("\n"));
+                      setCopiedNewCodes(true);
+                      setTimeout(() => setCopiedNewCodes(false), 2000);
+                    } catch {}
+                  }}
+                  style={styles.copyBtn}
+                >
+                  {copiedNewCodes ? "Copied All Codes!" : "Copy All Codes"}
+                </button>
+              </div>
+
               <label style={styles.checkboxLabel}>
                 <input
                   type="checkbox"
@@ -248,6 +267,22 @@ export function TwoFactorSetupPage() {
                 <code style={styles.codeText}>{code}</code>
               </div>
             ))}
+          </div>
+
+          <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(backupCodes.join("\n"));
+                  setCopiedCodes(true);
+                  setTimeout(() => setCopiedCodes(false), 2000);
+                } catch {}
+              }}
+              style={styles.copyBtn}
+            >
+              {copiedCodes ? "Copied All Codes!" : "Copy All Codes"}
+            </button>
           </div>
 
           <label style={styles.checkboxLabel}>
