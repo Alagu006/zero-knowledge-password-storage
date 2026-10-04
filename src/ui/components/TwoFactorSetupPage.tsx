@@ -279,8 +279,8 @@ export function TwoFactorSetupPage() {
   // ── Phase: Verifying TOTP code ──────────────────────────────────────
   if (phase === "verifying") {
     const secretMatch = totpUri.match(/secret=([A-Z2-7]+)/i);
-    const rawSecret = secretMatch ? secretMatch[1] : "";
-    const formattedSecret = rawSecret.match(/.{1,4}/g)?.join(" ") ?? rawSecret;
+    const rawSecret: string = secretMatch?.[1] ?? "";
+    const formattedSecret: string = rawSecret.match(/.{1,4}/g)?.join(" ") ?? rawSecret;
 
     const handleCopySecret = async () => {
       if (!rawSecret) return;
