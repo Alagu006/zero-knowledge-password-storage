@@ -1,0 +1,354 @@
+/* ==========================================================================
+   Anime & Animatic Cyberpunk Error Pages Styling
+   ========================================================================== */
+
+@keyframes animeFloat {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(0.5deg);
+  }
+}
+
+@keyframes neonGlowCyan {
+  0%, 100% {
+    box-shadow: 0 0 25px rgba(0, 240, 255, 0.35), 0 0 50px rgba(180, 0, 255, 0.2);
+    border-color: rgba(0, 240, 255, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(0, 240, 255, 0.6), 0 0 80px rgba(180, 0, 255, 0.4);
+    border-color: rgba(180, 0, 255, 0.8);
+  }
+}
+
+@keyframes neonGlowRed {
+  0%, 100% {
+    box-shadow: 0 0 25px rgba(255, 40, 70, 0.35), 0 0 50px rgba(255, 120, 0, 0.2);
+    border-color: rgba(255, 50, 80, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 45px rgba(255, 40, 70, 0.65), 0 0 85px rgba(255, 120, 0, 0.4);
+    border-color: rgba(255, 140, 0, 0.85);
+  }
+}
+
+@keyframes scanlineSweep {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(1000%);
+  }
+}
+
+@keyframes glitchFlicker {
+  0%, 100% {
+    opacity: 1;
+    transform: translate(0);
+  }
+  92% {
+    opacity: 1;
+    transform: translate(0);
+  }
+  93% {
+    opacity: 0.8;
+    transform: translate(-3px, 1px);
+    text-shadow: 3px 0 #00f0ff, -3px 0 #ff0077;
+  }
+  94% {
+    opacity: 1;
+    transform: translate(3px, -1px);
+    text-shadow: -3px 0 #00f0ff, 3px 0 #ff0077;
+  }
+  95% {
+    opacity: 1;
+    transform: translate(0);
+    text-shadow: none;
+  }
+}
+
+@keyframes pulseDot {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+.anime-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 20%, #16122c 0%, #0a0815 60%, #05040a 100%);
+  color: #e2e8f0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.anime-container::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(rgba(0, 240, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+.anime-container-500 {
+  background: radial-gradient(circle at 50% 20%, #2e0e15 0%, #13060a 60%, #060204 100%) !important;
+}
+
+.anime-container-500::before {
+  background-image: 
+    linear-gradient(rgba(255, 60, 80, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 60, 80, 0.05) 1px, transparent 1px) !important;
+}
+
+.anime-card {
+  position: relative;
+  width: 100%;
+  max-width: 920px;
+  background: rgba(18, 16, 32, 0.85);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  border-radius: 20px;
+  padding: 40px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 36px;
+  align-items: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 30px rgba(0, 240, 255, 0.15);
+  z-index: 10;
+  animation: neonGlowCyan 6s ease-in-out infinite alternate;
+}
+
+.anime-card-500 {
+  border-color: rgba(255, 60, 90, 0.4) !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 35px rgba(255, 50, 80, 0.25) !important;
+  animation: neonGlowRed 5s ease-in-out infinite alternate !important;
+}
+
+.anime-image-wrapper {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  animation: animeFloat 5s ease-in-out infinite;
+}
+
+.anime-image {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  display: block;
+  border-radius: 14px;
+}
+
+.anime-scanline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: linear-gradient(to bottom, transparent, rgba(0, 240, 255, 0.4), transparent);
+  pointer-events: none;
+  animation: scanlineSweep 4s linear infinite;
+}
+
+.anime-scanline-500 {
+  background: linear-gradient(to bottom, transparent, rgba(255, 50, 80, 0.5), transparent) !important;
+}
+
+.anime-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 30px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  background: rgba(0, 240, 255, 0.1);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  color: #00f0ff;
+  margin-bottom: 16px;
+}
+
+.anime-badge-500 {
+  background: rgba(255, 40, 70, 0.15) !important;
+  border-color: rgba(255, 40, 70, 0.4) !important;
+  color: #ff3355 !important;
+}
+
+.anime-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: currentColor;
+  box-shadow: 0 0 8px currentColor;
+  animation: pulseDot 2s ease-in-out infinite;
+}
+
+.anime-code {
+  font-size: 72px;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: -2px;
+  margin: 0 0 12px 0;
+  background: linear-gradient(135deg, #00f0ff 0%, #b400ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: glitchFlicker 7s infinite;
+}
+
+.anime-code-500 {
+  background: linear-gradient(135deg, #ff3355 0%, #ff9900 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+.anime-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 12px 0;
+  letter-spacing: -0.5px;
+}
+
+.anime-description {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #a0aec0;
+  margin: 0 0 24px 0;
+}
+
+.anime-hud-box {
+  background: rgba(10, 8, 20, 0.6);
+  border: 1px dashed rgba(0, 240, 255, 0.25);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 12px;
+  color: #718096;
+  margin-bottom: 24px;
+}
+
+.anime-hud-box-500 {
+  border-color: rgba(255, 50, 80, 0.3) !important;
+}
+
+.anime-hud-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.anime-hud-item:last-child {
+  margin-bottom: 0;
+}
+
+.anime-hud-highlight {
+  color: #00f0ff;
+  font-weight: 600;
+}
+
+.anime-hud-highlight-500 {
+  color: #ff3355 !important;
+}
+
+.anime-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.anime-btn-primary {
+  padding: 12px 22px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #00f0ff 0%, #7c8aff 100%);
+  color: #080911;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(0, 240, 255, 0.3);
+  transition: all 0.25s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.anime-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 22px rgba(0, 240, 255, 0.5);
+  filter: brightness(1.1);
+}
+
+.anime-btn-primary-500 {
+  background: linear-gradient(135deg, #ff3355 0%, #ff8800 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 15px rgba(255, 50, 80, 0.35) !important;
+}
+
+.anime-btn-primary-500:hover {
+  box-shadow: 0 6px 22px rgba(255, 50, 80, 0.55) !important;
+}
+
+.anime-btn-secondary {
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.anime-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+@media (max-width: 768px) {
+  .anime-card {
+    grid-template-columns: 1fr;
+    padding: 24px;
+    gap: 24px;
+  }
+  .anime-code {
+    font-size: 52px;
+  }
+  .anime-title {
+    font-size: 20px;
+  }
+  .anime-actions {
+    flex-direction: column;
+  }
+  .anime-btn-primary, .anime-btn-secondary {
+    width: 100%;
+    justify-content: center;
+  }
+}
