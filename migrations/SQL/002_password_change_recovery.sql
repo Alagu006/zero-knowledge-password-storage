@@ -46,9 +46,9 @@
 -- updated in-place. See PUT /auth/password route.
 
 -- Account recovery: three new nullable columns on users.
-ALTER TABLE users ADD COLUMN recovery_wrapped_vk      BYTEA;
-ALTER TABLE users ADD COLUMN recovery_wrapped_vk_iv   BYTEA;
-ALTER TABLE users ADD COLUMN recovery_wrapped_vk_tag  BYTEA;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_wrapped_vk      BYTEA;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_wrapped_vk_iv   BYTEA;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_wrapped_vk_tag  BYTEA;
 
 -- Comment on new columns for documentation.
 COMMENT ON COLUMN users.recovery_wrapped_vk IS

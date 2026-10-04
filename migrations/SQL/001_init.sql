@@ -24,7 +24,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- ---------------------------------------------------------------------------
 -- users — one row per registered account
 -- ---------------------------------------------------------------------------
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   -- Opaque identifier. UUIDv4 prevents enumeration via sequential IDs.
   user_id       UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
 
@@ -68,7 +68,7 @@ CREATE TABLE users (
 -- ---------------------------------------------------------------------------
 -- vault_entries — encrypted blobs, one per password/note stored by user
 -- ---------------------------------------------------------------------------
-CREATE TABLE vault_entries (
+CREATE TABLE IF NOT EXISTS vault_entries (
   -- Opaque identifier. UUIDv4 prevents enumeration via sequential IDs.
   id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
 
@@ -106,7 +106,7 @@ CREATE TABLE vault_entries (
 -- We store session records for the ability to revoke sessions server-side
 -- (e.g. on password change, on detected compromise). The JWT itself is
 -- self-contained; this table is the revocation list.
-CREATE TABLE auth_sessions (
+CREATE TABLE IF NOT EXISTS auth_sessions (
   id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id       UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
 
@@ -121,7 +121,7 @@ CREATE TABLE auth_sessions (
 -- ---------------------------------------------------------------------------
 -- audit_log — immutable append-only security event log
 -- ---------------------------------------------------------------------------
-CREATE TABLE audit_log (
+CREATE TABLE IF NOT EXISTS audit_log (
   id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     UUID        REFERENCES users(user_id) ON DELETE SET NULL,
 
@@ -149,13 +149,13 @@ CREATE TABLE audit_log (
 -- Indexes
 -- ---------------------------------------------------------------------------
 -- Vault entries: lookup by owner is the dominant query pattern.
-CREATE INDEX idx_vault_entries_user_id    ON vault_entries(user_id);
+CREATE INDEX IF NOT EXISTS idx_vault_entries_user_id    ON vault_entries(user_id);
 
 -- Sessions: lookup by owner (for revocation) and by token hash (for auth).
-CREATE INDEX idx_auth_sessions_user_id    ON auth_sessions(user_id);
-CREATE INDEX idx_auth_sessions_token_hash ON auth_sessions(token_hash);
+CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id    ON auth_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_auth_sessions_token_hash ON auth_sessions(token_hash);
 
 -- Audit: time-range queries for incident investigation, user-specific queries.
-CREATE INDEX idx_audit_log_user_id    ON audit_log(user_id);
-CREATE INDEX idx_audit_log_created_at ON audit_log(created_at);
-CREATE INDEX idx_audit_log_event_type ON audit_log(event_type);
+CREATE INDEX IF NOT EXISTS idx_audit_log_user_id    ON audit_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_log_event_type ON audit_log(event_type);

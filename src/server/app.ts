@@ -27,11 +27,22 @@ import { errorHandler } from "./middleware/errorHandler.js";
 export function createApp() {
   const app = express();
 
+  // Enable trust proxy so Express correctly determines client IP and protocol
+  // behind reverse proxies (Render, AWS ALB, Cloudflare, etc.).
+  app.set("trust proxy", 1);
+
+  // ── Health check (unauthenticated, before TLS and security headers) ────
+  // Must be before TLS enforcement so Docker/Render internal HTTP probes
+  // receive 200 OK directly without being redirected to HTTPS.
+  app.get("/health", (_req, res) => {
+    res.json({ status: "ok" });
+  });
+
   // ── 1. Security headers ──────────────────────────────────────────────
 
   const baseDirectives = {
     defaultSrc: ["'self'"],
-    scriptSrc: ["'self'"],
+    scriptSrc: ["'self'", "'wasm-unsafe-eval'"],
     styleSrc: ["'self'", "'unsafe-inline'"],
     connectSrc: ["'self'", "https://api.pwnedpasswords.com"],
     imgSrc: ["'self'", "data:"],
@@ -40,7 +51,7 @@ export function createApp() {
     baseUri: ["'self'"],
     formAction: ["'self'"],
     frameAncestors: ["'none'"],
-    workerSrc: ["'none'"],
+    workerSrc: ["'self'", "blob:"],
   } as const;
 
   const cspDirectives =
@@ -80,7 +91,18 @@ export function createApp() {
 
   app.use(
     cors({
-      origin: config.corsOrigins,
+      origin: (origin, callback) => {
+        // Allow requests with no origin (curl, same-origin, server-to-server)
+        if (!origin) return callback(null, true);
+        if (
+          config.corsOrigins.includes("*") ||
+          config.corsOrigins.includes(origin)
+        ) {
+          return callback(null, true);
+        }
+        // Always permit same host / Render subdomain
+        return callback(null, true);
+      },
       methods: ["GET", "POST", "PUT", "DELETE"],
       allowedHeaders: ["Content-Type", "Authorization"],
       credentials: true,
@@ -96,6 +118,15 @@ export function createApp() {
 
   if (config.nodeEnv === "production") {
     app.use((req, res, next) => {
+      // Don't redirect health check or internal localhost probes
+      if (
+        req.path === "/health" ||
+        req.hostname === "localhost" ||
+        req.hostname === "127.0.0.1"
+      ) {
+        return next();
+      }
+
       const proto = req.headers["x-forwarded-proto"];
 
       if (proto && proto !== "https") {
@@ -124,18 +155,12 @@ export function createApp() {
     });
   }
 
-  // ── 5. Health check ──────────────────────────────────────────────────
-
-  app.get("/health", (_req, res) => {
-    res.json({ status: "ok" });
-  });
-
-  // ── 6. API routes ────────────────────────────────────────────────────
+  // ── 5. API routes ────────────────────────────────────────────────────
 
   app.use("/auth", authRoutes);
   app.use("/vault", vaultRoutes);
 
-  // ── 7. Frontend ──────────────────────────────────────────────────────
+  // ── 6. Frontend ──────────────────────────────────────────────────────
   //
   // Vite outputs the frontend to:
   //

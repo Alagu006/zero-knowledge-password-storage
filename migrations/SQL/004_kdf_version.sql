@@ -14,7 +14,7 @@
 -- master-key parameters, all client-side.
 -- ============================================================================
 
-ALTER TABLE users ADD COLUMN kdf_version INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS kdf_version INTEGER NOT NULL DEFAULT 1;
 
 COMMENT ON COLUMN users.kdf_version IS
   'Argon2id parameter-table version this account was derived with. Returned by login step 1; bumped by password change / recovery / PUT /auth/kdf-upgrade.';

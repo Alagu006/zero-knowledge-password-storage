@@ -8,11 +8,15 @@
 import { createApp } from "./app.js";
 import { config } from "./config.js";
 import { prisma } from "./db.js";
+import { runMigrations } from "./migrate.js";
 
 async function main() {
   // Verify database connectivity before accepting traffic.
   await prisma.$connect();
   console.log("[zkm] Connected to PostgreSQL via Prisma");
+
+  // Ensure all database tables and schema migrations are applied.
+  await runMigrations();
 
   const app = createApp();
 

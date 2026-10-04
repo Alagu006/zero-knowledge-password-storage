@@ -12,8 +12,8 @@
 -- Existing sessions keep NULL metadata (captured going forward on login).
 -- ============================================================================
 
-ALTER TABLE auth_sessions ADD COLUMN ip_address VARCHAR(45);
-ALTER TABLE auth_sessions ADD COLUMN user_agent TEXT;
+ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS ip_address VARCHAR(45);
+ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS user_agent TEXT;
 
 COMMENT ON COLUMN auth_sessions.ip_address IS
   'Best-effort peer address at session creation (see migration note). May be NULL for pre-existing sessions.';
